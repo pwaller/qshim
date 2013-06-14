@@ -1,0 +1,39 @@
+# This script assumes that qshim is in your $PATH.
+
+set -u 
+
+# If $1 is set..
+if [ ! -z "${1+SET}" ]; then
+    # Code to send things to batch
+    i=0
+    for A in "$@";
+    do
+        export "QSHIM_ARG_$i"="$A"
+        ((i++))
+    done
+    export QSHIM_PWD="${PWD}"    
+    qsub -j oe -V "$(which qshim)"
+    exit
+fi
+
+# This code runs on the batch cluster
+
+ARGS=()
+# Put QSHIM_ARG_{1..+inf} into the array $ARGS
+i=0
+while [[ true ]];
+do
+    V="QSHIM_ARG_$i"
+    [ -z "${!V+SET}" ] && break
+    ARG="${!V}"
+    ARGS=("${ARGS[@]:+${ARGS[@]}}" "$ARG")
+    ((i++))
+done
+
+if [ ! -z "${QSHIM_PWD+SET}" ]; then
+    cd "${QSHIM_PWD}"
+fi
+
+# Invoke with the array in $ARGS
+exec "${ARGS[@]:+${ARGS[@]}}"
+
